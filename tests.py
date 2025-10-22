@@ -1,39 +1,27 @@
 from functions.get_files_info import get_files_info
 
 
-def main():
-    try:
-        get_files_info("calculator", ".")
+def test():
+    result = get_files_info("calculator", ".")
+    print("Result for current directory:")
+    print(result)
+    print("\n")
 
-    except Exception as e:
-        print("Result for current directory:")
-        print(f"Error: {e}")
-        print("\n")
+    result = get_files_info("calculator", "pkg")
+    print("Result for 'pkg' directory:")
+    print(result)
+    print("\n")
 
-    try:
-        get_files_info("calculator", "pkg")
+    result = get_files_info("calculator", "/bin")
+    print("Result for '/bin' directory:")
+    print(result)
+    print("\n")
 
-    except Exception as e:
-        print("Result for current directory:")
-        print(f"Error: {e}")
-        print("\n")
-
-    try:
-        get_files_info("calculator", "../")
-
-    except Exception as e:
-        print("Result for current directory:")
-        print(f"Error: {e}")
-        print("\n")
-
-    try:
-        get_files_info("calculator", "/bin")
-
-    except Exception as e:
-        print("Result for current directory:")
-        print(f"Error: {e}")
-        print("\n")
+    result = get_files_info("calculator", "../")
+    print("Result for '../' directory:")
+    print(result)
+    print("\n")
 
 
 if __name__ == "__main__":
-    main()
+    test()
