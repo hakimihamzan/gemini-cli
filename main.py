@@ -5,11 +5,7 @@ from google.genai import types
 from dotenv import load_dotenv
 
 from prompts import system_prompt
-from call_function import available_functions
-from functions.get_file_content import get_file_content
-from functions.run_python_file import run_python_file
-from functions.write_file import write_file
-from functions.get_files_info import get_files_info
+from call_function import call_function, available_functions
 
 
 def main():
@@ -24,7 +20,7 @@ def main():
     if not args:
         print("AI Code Assistant")
         print('\nUsage: python main.py "your prompt here" [--verbose]')
-        print('Example: python main.py "How do I build a calculator app?"')
+        print('Example: python main.py "How do I fix the calculator?"')
         sys.exit(1)
 
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -47,102 +43,30 @@ def generate_content(client, messages, verbose):
         model="gemini-2.0-flash-001",
         contents=messages,
         config=types.GenerateContentConfig(
-            tools=[available_functions],
-            system_instruction=system_prompt,
+            tools=[available_functions], system_instruction=system_prompt
         ),
     )
     if verbose:
         print("Prompt tokens:", response.usage_metadata.prompt_token_count)
         print("Response tokens:", response.usage_metadata.candidates_token_count)
-    print("Response:")
-    print(response.text)
 
     if not response.function_calls:
         return response.text
 
+    function_responses = []
     for function_call_part in response.function_calls:
-        if verbose:
-            print(
-                f"Calling function: {function_call_part.name}({function_call_part.args})"
-            )
-        else:
-            print(f" - Calling function: {function_call_part.name}")
-
         function_call_result = call_function(function_call_part, verbose)
+        if (
+            not function_call_result.parts
+            or not function_call_result.parts[0].function_response
+        ):
+            raise Exception("empty function call result")
+        if verbose:
+            print(f"-> {function_call_result.parts[0].function_response.response}")
+        function_responses.append(function_call_result.parts[0])
 
-        if not function_call_result.parts[0].function_response.response:
-            raise Exception("Error: calling function")
-
-        print(f"-> {function_call_result.parts[0].function_response.response}")
-
-
-def call_function(function_call_part, verbose=False):
-    args = function_call_part.args
-    function_name = function_call_part.name
-
-    if function_name == "get_file_content":
-        function_result = get_file_content("calculator", file_path=args["file_path"])
-
-        return types.Content(
-            role="tool",
-            parts=[
-                types.Part.from_function_response(
-                    name="get_file_content",
-                    response={"result": function_result},
-                )
-            ],
-        )
-
-    if function_name == "run_python_file":
-        function_result = run_python_file("calculator", file_path=args["file_path"])
-
-        return types.Content(
-            role="tool",
-            parts=[
-                types.Part.from_function_response(
-                    name="run_python_file",
-                    response={"result": function_result},
-                )
-            ],
-        )
-
-    if function_name == "write_file":
-        function_result = write_file(
-            "calculator", file_path=args["file_path"], content=args["content"]
-        )
-
-        return types.Content(
-            role="tool",
-            parts=[
-                types.Part.from_function_response(
-                    name="write_file",
-                    response={"result": function_result},
-                )
-            ],
-        )
-
-    if function_name == "get_files_info":
-        function_result = get_files_info("calculator", directory=args["directory"])
-
-        return types.Content(
-            role="tool",
-            parts=[
-                types.Part.from_function_response(
-                    name="get_files_info",
-                    response={"result": function_result},
-                )
-            ],
-        )
-
-    return types.Content(
-        role="tool",
-        parts=[
-            types.Part.from_function_response(
-                name=function_name,
-                response={"error": f"Unknown function: {function_name}"},
-            )
-        ],
-    )
+    if not function_responses:
+        raise Exception("no function responses generated, exiting.")
 
 
 if __name__ == "__main__":
